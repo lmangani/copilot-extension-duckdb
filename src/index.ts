@@ -13,6 +13,8 @@ import {
   verifyAndParseRequest,
 } from "@copilot-extensions/preview-sdk";
 
+const { printTable } = require('console-table-printer');
+
 // Initialize DuckDB
 const db = new duckdb.Database(':memory:'); // In-memory database
 const connection = db.connect();
@@ -23,6 +25,23 @@ async function executeQuery(query: string): Promise<any> {
     connection.all(query, (err, result) => {
       if (err) reject(err);
       else resolve(result);
+    });
+  });
+}
+
+// Results with printTable(json);
+async function executeQueryPretty(query: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    connection.all(query, (err, result) => {
+      if (err) {
+        reject(err);
+      } else {
+        // Print the SQL query within ```sql tags
+        const chunks = ['```sql\n', query, ' \n', '```\n', '\n'];
+        chunks.push(printTable(result));
+        chunks.push('\n');
+        resolve(chunks);
+      }
     });
   });
 }
@@ -51,7 +70,8 @@ async function executeQueryTable(query: string): Promise<string[]> {
         } else {
           chunks.push('No results found.\n');
         }
-        chunks.push('```\n');
+        chunks.push('```');
+        chunks.push('\n');
         resolve(chunks);
       }
     });
@@ -119,7 +139,7 @@ app.post("/", async (c) => {
       // Check if the message contains a SQL query
       if (containsSQLQuery(userPrompt)) {
         try {
-          const resultChunks = await executeQueryTable(userPrompt);
+          const resultChunks = await executeQueryPretty(userPrompt);
           // stream.write(createTextEvent(`Hi ${user.data.login}! Here are your query results:\n`));
           for (const chunk of resultChunks) {
             stream.write(createTextEvent(chunk));
