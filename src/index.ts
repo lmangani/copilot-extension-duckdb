@@ -61,15 +61,14 @@ async function executeQueryTable(query: string): Promise<string[]> {
         // const chunks = ['```sql\n', query, ' \n', '```\n', '\n'];
         // Format the result into a markdown table
         if (result.length > 0) {
-          chunks.push('```\n');
           const headers = Object.keys(result[0]);
           chunks.push('| ' + headers.join(' | ') + ' |\n');
-          chunks.push('|' + headers.map(() => '---').join('|') + ' |\n');
+          chunks.push('| ' + headers.map(() => '---').join(' | ') + ' |\n');
           result.forEach(row => {
             const values = headers.map(header => row[header]);
             chunks.push('| ' + values.join(' | ') + ' |\n');
           });
-          chunks.push('```\n');
+          chunks.push('\n');
         } else {
           chunks.push('No results found.\n');
         }
