@@ -28,27 +28,27 @@ async function executeQuery(query: string): Promise<any> {
 }
 
 // Helper function to execute SQL queries
-async function executeQueryTable(query: string): Promise<string> {
+async function executeQueryTable(query: string): Promise<string[]> {
   return new Promise((resolve, reject) => {
     connection.all(query, (err, result) => {
       if (err) {
         reject(err);
       } else {
         // Format the result into a table with proper ```sql tags
+        const chunks = ['```sql\n'];
         if (result.length > 0) {
           const headers = Object.keys(result[0]);
-          let table = '```sql\n';
-          table += headers.join(' | ') + '\n';
-          table += headers.map(() => '---').join(' | ') + '\n';
+          chunks.push(headers.join(' | ') + '\n');
+          chunks.push(headers.map(() => '---').join(' | ') + '\n');
           result.forEach(row => {
             const values = headers.map(header => row[header]);
-            table += values.join(' | ') + '\n';
+            chunks.push(values.join(' | ') + '\n');
           });
-          table += '```\n';
-          resolve(table);
         } else {
-          resolve('```sql\nNo results found.\n```\n');
+          chunks.push('No results found.\n');
         }
+        chunks.push('```\n');
+        resolve(chunks);
       }
     });
   });
@@ -115,9 +115,11 @@ app.post("/", async (c) => {
       // Check if the message contains a SQL query
       if (containsSQLQuery(userPrompt)) {
         try {
-          const result = await executeQueryTable(userPrompt);
-          stream.write(createTextEvent(`Hi ${user.data.login}! Here are your query result:\n`));
-          stream.write(createTextEvent(JSON.stringify(result, null, 2)));
+          const resultChunks = await executeQueryTable(userPrompt);
+          stream.write(createTextEvent(`Hi ${user.data.login}! Here are your query results:\n`));
+          for (const chunk of resultChunks) {
+            stream.write(createTextEvent(chunk));
+          }
         } catch (error) {
           stream.write(createTextEvent(`Hi ${user.data.login}! There was an error executing your query:\n`));
           stream.write(createTextEvent(error instanceof Error ? error.message : 'Unknown error'));
