@@ -39,8 +39,10 @@ async function executeQueryPretty(query: string): Promise<any> {
         // Print the SQL query within ```sql tags
         const chunks = ['```sql\n', query, ' \n', '```\n', '\n'];
         const p = new Table(result);
-        chunks.push(p.render());
-        chunks.push('\n');
+        const tableStr = p.render();
+        chunks.push('```\n');
+        chunks.push(tableStr.toString());
+        chunks.push('```\n');
         resolve(chunks);
       }
     });
