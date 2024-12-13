@@ -27,7 +27,6 @@ async function executeQuery(query: string): Promise<any> {
   });
 }
 
-// Execute with pseudo-markdown
 // Helper function to execute SQL queries
 async function executeQueryTable(query: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -62,10 +61,10 @@ function containsSQLQuery(message: string): boolean {
 
 const app = new Hono();
 
-// app.get("/", (c) => {
-//   return c.text("Welcome to the Copilot DuckDB Extension! Query Me! 👋");
-// });
-  
+app.get("/", (c) => {
+  return c.text("Welcome to the Copilot DuckDB Extension! Query Me! 👋");
+});
+
 app.post("/", async (c) => {
   const tokenForUser = c.req.header("X-GitHub-Token") ?? "";
   const body = await c.req.text();
@@ -76,7 +75,9 @@ app.post("/", async (c) => {
     body,
     signature,
     keyID,
-    { token: tokenForUser }
+    {
+      token: tokenForUser,
+    }
   );
 
   if (!isValidRequest) {
@@ -113,7 +114,7 @@ app.post("/", async (c) => {
       if (containsSQLQuery(userPrompt)) {
         try {
           const result = await executeQueryTable(userPrompt);
-          stream.write(createTextEvent(`Hi ${user.data.login}! Here's your query result:\n`));
+          stream.write(createTextEvent(`Hi ${user.data.login}! Here are your query result:\n`));
           stream.write(createTextEvent(JSON.stringify(result, null, 2)));
         } catch (error) {
           stream.write(createTextEvent(`Hi ${user.data.login}! There was an error executing your query:\n`));
@@ -121,7 +122,9 @@ app.post("/", async (c) => {
         }
       } else {
         // Handle non-SQL messages using the normal prompt flow
-        const { message } = await prompt(userPrompt, { token: tokenForUser });
+        const { message } = await prompt(userPrompt, {
+          token: tokenForUser,
+        });
         stream.write(createTextEvent(`Hi ${user.data.login}! `));
         stream.write(createTextEvent(message.content));
       }
