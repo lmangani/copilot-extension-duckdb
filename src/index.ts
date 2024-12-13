@@ -35,15 +35,15 @@ async function executeQueryTable(query: string): Promise<string[]> {
         reject(err);
       } else {
         // Print the SQL query within ```sql tags
-        const chunks = ['```sql\n', query, ' \n', '```\n'];
+        const chunks = ['```sql\n', query, ' \n', '```\n', '\n'];
         // Format the result into a markdown table
-        chunks.push('```\n');
-        chunks.push('### Query Results\m');
-        chunks.push('\n');
         if (result.length > 0) {
+          chunks.push('```\n');
+          chunks.push('### Query Results\n');
+          chunks.push('\n');
           const headers = Object.keys(result[0]);
           chunks.push('| ' + headers.join(' | ') + ' |\n');
-          chunks.push('| ' + headers.map(() => '---').join(' | ') + ' |\n');
+          chunks.push('|' + headers.map(() => '---').join('|') + ' |\n');
           result.forEach(row => {
             const values = headers.map(header => row[header]);
             chunks.push('| ' + values.join(' | ') + ' |\n');
