@@ -27,6 +27,32 @@ async function executeQuery(query: string): Promise<any> {
   });
 }
 
+// Execute with pseudo-markdown
+// Helper function to execute SQL queries
+async function executeQueryTable(query: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    connection.all(query, (err, result) => {
+      if (err) {
+        reject(err);
+      } else {
+        // Format the result into a table
+        if (result.length > 0) {
+          const headers = Object.keys(result[0]);
+          let table = headers.join(' | ') + '\n';
+          table += headers.map(() => '---').join(' | ') + '\n';
+          result.forEach(row => {
+            const values = headers.map(header => row[header]);
+            table += values.join(' | ') + '\n';
+          });
+          resolve(table);
+        } else {
+          resolve('No results found.');
+        }
+      }
+    });
+  });
+}
+
 // Dummy helper to be extended later on
 function containsSQLQuery(message: string): boolean {
   const sqlKeywords = ['SELECT', 'FROM', 'WHERE', 'LIMIT'];
@@ -86,7 +112,7 @@ app.post("/", async (c) => {
       // Check if the message contains a SQL query
       if (containsSQLQuery(userPrompt)) {
         try {
-          const result = await executeQuery(userPrompt);
+          const result = await executeQueryTable(userPrompt);
           stream.write(createTextEvent(`Hi ${user.data.login}! Here's your query result:\n`));
           stream.write(createTextEvent(JSON.stringify(result, null, 2)));
         } catch (error) {
