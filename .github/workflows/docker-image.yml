@@ -28,8 +28,7 @@ jobs:
     - name: Build and push to GHCR (bun)
       uses: docker/build-push-action@v5.1.0
       with:
-          platforms: linux/amd64, linux/arm64
+          platforms: linux/amd64
           push: true
           tags: |
              ghcr.io/quackscience/copilot-extension-duckdb:latest
-             ghcr.io/quackscience/copilot-extension-duckdb:${{ github.event.inputs.TAG_NAME || github.event.release.tag_name }}
