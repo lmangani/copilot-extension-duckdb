@@ -34,18 +34,20 @@ async function executeQueryTable(query: string): Promise<string> {
       if (err) {
         reject(err);
       } else {
-        // Format the result into a table
+        // Format the result into a table with proper ```sql tags
         if (result.length > 0) {
           const headers = Object.keys(result[0]);
-          let table = headers.join(' | ') + '\n';
+          let table = '```sql\n';
+          table += headers.join(' | ') + '\n';
           table += headers.map(() => '---').join(' | ') + '\n';
           result.forEach(row => {
             const values = headers.map(header => row[header]);
             table += values.join(' | ') + '\n';
           });
+          table += '```\n';
           resolve(table);
         } else {
-          resolve('No results found.');
+          resolve('```sql\nNo results found.\n```\n');
         }
       }
     });
