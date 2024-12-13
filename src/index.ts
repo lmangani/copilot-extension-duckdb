@@ -35,7 +35,7 @@ async function executeQueryTable(query: string): Promise<string[]> {
         reject(err);
       } else {
         // Print the SQL query within ```sql tags
-        const chunks = ['```sql\n', query, '```\n'];
+        const chunks = ['```sql\n', query, ' \n', '```\n\n'];
         // Format the result into a markdown table
         chunks.push('```\n');
         if (result.length > 0) {
