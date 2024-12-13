@@ -13,7 +13,7 @@ import {
   verifyAndParseRequest,
 } from "@copilot-extensions/preview-sdk";
 
-const { printTable } = require('console-table-printer');
+import { printTable, Table } from "console-table-printer";
 
 // Initialize DuckDB
 const db = new duckdb.Database(':memory:'); // In-memory database
@@ -38,7 +38,8 @@ async function executeQueryPretty(query: string): Promise<any> {
       } else {
         // Print the SQL query within ```sql tags
         const chunks = ['```sql\n', query, ' \n', '```\n', '\n'];
-        chunks.push(printTable(result));
+        const p = new Table(result);
+        chunks.push(p.render());
         chunks.push('\n');
         resolve(chunks);
       }
