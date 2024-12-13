@@ -34,15 +34,17 @@ async function executeQueryTable(query: string): Promise<string[]> {
       if (err) {
         reject(err);
       } else {
-        // Format the result into a table with proper ```sql tags
-        const chunks = ['```\n'];
+        // Print the SQL query within ```sql tags
+        const chunks = ['```sql\n', query, '```\n'];
+        // Format the result into a markdown table
+        chunks.push('```\n');
         if (result.length > 0) {
           const headers = Object.keys(result[0]);
-          chunks.push(headers.join(' | ') + '\n');
-          chunks.push(headers.map(() => '---').join(' | ') + '\n');
+          chunks.push('| ' + headers.join(' | ') + ' |\n');
+          chunks.push('| ' + headers.map(() => '---').join(' | ') + ' |\n');
           result.forEach(row => {
             const values = headers.map(header => row[header]);
-            chunks.push(values.join(' | ') + '\n');
+            chunks.push('| ' + values.join(' | ') + ' |\n');
           });
         } else {
           chunks.push('No results found.\n');
