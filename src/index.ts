@@ -36,10 +36,10 @@ function containsSQLQuery(message: string): boolean {
 
 const app = new Hono();
 
-app.get("/", (c) => {
-  return c.text("Welcome to the Copilot DuckDB Extension! Query Me! 👋");
-});
-
+// app.get("/", (c) => {
+//   return c.text("Welcome to the Copilot DuckDB Extension! Query Me! 👋");
+// });
+  
 app.post("/", async (c) => {
   const tokenForUser = c.req.header("X-GitHub-Token") ?? "";
   const body = await c.req.text();
@@ -50,9 +50,7 @@ app.post("/", async (c) => {
     body,
     signature,
     keyID,
-    {
-      token: tokenForUser,
-    }
+    { token: tokenForUser }
   );
 
   if (!isValidRequest) {
@@ -97,9 +95,7 @@ app.post("/", async (c) => {
         }
       } else {
         // Handle non-SQL messages using the normal prompt flow
-        const { message } = await prompt(userPrompt, {
-          token: tokenForUser,
-        });
+        const { message } = await prompt(userPrompt, { token: tokenForUser });
         stream.write(createTextEvent(`Hi ${user.data.login}! `));
         stream.write(createTextEvent(message.content));
       }
