@@ -1,5 +1,5 @@
 {
-  "name": "copilot-extension-template",
+  "name": "copilot-extension-duckdb",
   "scripts": {
     "dev": "tsx watch src/index.ts"
   },
@@ -7,7 +7,8 @@
     "@copilot-extensions/preview-sdk": "^5.0.1",
     "@hono/node-server": "^1.13.7",
     "@octokit/core": "^6.1.2",
-    "hono": "^4.6.13"
+    "hono": "^4.6.13",
+    "duckdb": "^1.1.3"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",
@@ -16,6 +17,6 @@
   "version": "1.0.0",
   "description": "``` npm install npm run dev ```",
   "main": "index.js",
-  "author": "Nick Taylor <nick@nickyt.co>",
+  "author": "Lorenzo Mangani <lorenzo.mangani@gmail.com>",
   "license": "MIT"
 }
