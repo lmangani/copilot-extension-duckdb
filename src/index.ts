@@ -57,12 +57,11 @@ async function executeQueryTable(query: string): Promise<string[]> {
         reject(err);
       } else {
         // Print the SQL query within ```sql tags
-        const chunks = ['```sql\n', query, ' \n', '```\n', '\n'];
+        const chunks = [];
+        // const chunks = ['```sql\n', query, ' \n', '```\n', '\n'];
         // Format the result into a markdown table
         if (result.length > 0) {
           chunks.push('```\n');
-          chunks.push('### Query Results\n');
-          chunks.push('\n');
           const headers = Object.keys(result[0]);
           chunks.push('| ' + headers.join(' | ') + ' |\n');
           chunks.push('|' + headers.map(() => '---').join('|') + ' |\n');
@@ -70,11 +69,10 @@ async function executeQueryTable(query: string): Promise<string[]> {
             const values = headers.map(header => row[header]);
             chunks.push('| ' + values.join(' | ') + ' |\n');
           });
+          chunks.push('```\n');
         } else {
           chunks.push('No results found.\n');
         }
-        chunks.push('```');
-        chunks.push('\n');
         resolve(chunks);
       }
     });
@@ -142,7 +140,7 @@ app.post("/", async (c) => {
       // Check if the message contains a SQL query
       if (containsSQLQuery(userPrompt)) {
         try {
-          const resultChunks = await executeQueryPretty(userPrompt);
+          const resultChunks = await executeQueryTable(userPrompt);
           // stream.write(createTextEvent(`Hi ${user.data.login}! Here are your query results:\n`));
           for (const chunk of resultChunks) {
             stream.write(createTextEvent(chunk));
