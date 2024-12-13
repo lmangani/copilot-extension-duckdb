@@ -35,9 +35,11 @@ async function executeQueryTable(query: string): Promise<string[]> {
         reject(err);
       } else {
         // Print the SQL query within ```sql tags
-        const chunks = ['```sql\n', query, ' \n', '```\n\n'];
+        const chunks = ['```sql\n', query, ' \n', '```\n'];
         // Format the result into a markdown table
         chunks.push('```\n');
+        chunks.push('### Query Results\m');
+        chunks.push('\n');
         if (result.length > 0) {
           const headers = Object.keys(result[0]);
           chunks.push('| ' + headers.join(' | ') + ' |\n');
@@ -118,12 +120,12 @@ app.post("/", async (c) => {
       if (containsSQLQuery(userPrompt)) {
         try {
           const resultChunks = await executeQueryTable(userPrompt);
-          stream.write(createTextEvent(`Hi ${user.data.login}! Here are your query results:\n`));
+          // stream.write(createTextEvent(`Hi ${user.data.login}! Here are your query results:\n`));
           for (const chunk of resultChunks) {
             stream.write(createTextEvent(chunk));
           }
         } catch (error) {
-          stream.write(createTextEvent(`Hi ${user.data.login}! There was an error executing your query:\n`));
+          stream.write(createTextEvent(`Oops! There was an error executing your query:\n`));
           stream.write(createTextEvent(error instanceof Error ? error.message : 'Unknown error'));
         }
       } else {
