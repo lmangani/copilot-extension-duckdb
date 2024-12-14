@@ -24,16 +24,13 @@ async function executeQuery(query: string): Promise<any> {
   return new Promise((resolve, reject) => {
     connection.all(query, (err, result) => {
       if (err) reject(err);
-      else {
-        const chunks = ['```json\n', result, '\n', '```\n'];
-        resolve(chunks);
-      }
+      else resolve(result);
     });
   });
 }
 
 // Results with printTable(json);
-async function executeQueryPretty(query: string, customConnection?: any): Promise<any> {
+async function executeQueryPretty(query: string): Promise<any> {
   return new Promise((resolve, reject) => {
     connection.all(query, (err, result) => {
       if (err) {
@@ -52,15 +49,17 @@ async function executeQueryPretty(query: string, customConnection?: any): Promis
   });
 }
 
-// Helper function to execute SQL queries, return markdown table with column types
-async function executeQueryTable(query: string, customConnection?: any): Promise<string[]> {
+// Helper function to execute SQL queries
+async function executeQueryTable(query: string): Promise<string[]> {
   return new Promise((resolve, reject) => {
-    const conn = customConnection || connection;
-    conn.all(query, (err, result) => {
+    connection.all(query, (err, result) => {
       if (err) {
         reject(err);
       } else {
+        // Print the SQL query within ```sql tags
         const chunks = [];
+        // const chunks = ['```sql\n', query, ' \n', '```\n', '\n'];
+        // Format the result into a markdown table
         if (result.length > 0) {
           const headers = Object.keys(result[0]);
           chunks.push('| ' + headers.join(' | ') + ' |\n');
@@ -136,16 +135,13 @@ app.post("/", async (c) => {
       const octokit = new Octokit({ auth: tokenForUser });
       const user = await octokit.request("GET /user");
       const userPrompt = getUserMessage(payload);
-      console.log("Hello User", user.data.login;
 
       // Check if the message contains a SQL query
       if (containsSQLQuery(userPrompt)) {
+        console.log(user, userPrompt);
         try {
-            console.log('Found valid query:',userPrompt);
-            const userdb = new duckdb.Database(`/tmp/${user.data.login}`);
-            const userconnection = userdb.connect();
-            const resultChunks = await executeQueryTable(userPrompt, userconnection);
-          }
+          const resultChunks = await executeQueryTable(userPrompt);
+          console.log('Query Output:',resultChunks.join());
           // stream.write(createTextEvent(`Hi ${user.data.login}! Here are your query results:\n`));
           for (const chunk of resultChunks) {
             stream.write(createTextEvent(chunk));
