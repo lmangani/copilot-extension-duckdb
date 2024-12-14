@@ -78,17 +78,16 @@ async function executeQueryTable(query: string): Promise<string[]> {
   });
 }
 
-// Dummy helper to be extended later on
+// Dummy helper to filter out non-queries
 function containsSQLQuery(message: string): boolean {
-  const sqlKeywords = ['SELECT', 'FROM', 'WHERE', 'LIMIT'];
-  const upperMessage = message.toUpperCase();
-  return sqlKeywords.some(keyword => upperMessage.includes(keyword));
+  const duckdbPattern = /\b(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|COPY|ATTACH|FROM|WHERE|GROUP BY|ORDER BY|LIMIT|READ_CSV|READ_PARQUET|READ_JSON_AUTO|UNNEST|PRAGMA|EXPLAIN|DESCRIBE|SHOW|SET|WITH|CASE|JOIN|TABLE)\b/i;
+  return duckdbPattern.test(message.toUpperCase());
 }
 
 const app = new Hono();
 
 app.get("/", (c) => {
-  return c.text("Welcome to the Copilot DuckDB Extension! Query Me! 👋");
+  return c.text("Quack! 👋");
 });
 
 app.post("/", async (c) => {
@@ -152,11 +151,20 @@ app.post("/", async (c) => {
         }
       } else {
         // Handle non-SQL messages using the normal prompt flow
-        const { message } = await prompt(userPrompt, {
+        const guessPrompt = `Generate a working DuckDB SQL query for this prompt, making sure to exclusively return a DuckDB SQL query with no comments: ${userPrompt}`
+        const { message } = await prompt(guessPrompt, {
           token: tokenForUser,
         });
-        stream.write(createTextEvent(`Hi ${user.data.login}! `));
-        stream.write(createTextEvent(message.content));
+        if (containsSQLQuery(message.content)) {
+          const resultChunks = await executeQueryTable(message.content);
+          for (const chunk of resultChunks) {
+            stream.write(createTextEvent(chunk));
+          }
+        } else {
+          // If everything fails, return whatever the response was
+          stream.write(createTextEvent(`Hi ${user.data.login}! `));
+          stream.write(createTextEvent(message.content));
+        }
       }
 
       stream.write(createDoneEvent());
