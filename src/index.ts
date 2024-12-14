@@ -152,7 +152,7 @@ app.post("/", async (c) => {
           console.log('LLM Output:', stripSQL);
           if (containsSQLQuery(stripSQL)) {
             try {
-              const resultChunks = await executeQueryTable(message.content);
+              const resultChunks = await executeQueryTable(stripSQL);
               console.log('Query Output:', resultChunks.join());
               for (const chunk of resultChunks) {
                 stream.write(createTextEvent(chunk));
