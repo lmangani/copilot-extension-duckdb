@@ -23,10 +23,7 @@ async function executeQuery(query: string): Promise<any> {
   return new Promise((resolve, reject) => {
     connection.all(query, (err, result) => {
       if (err) reject(err);
-      else {
-        const chunks = ['```json\n', result, '\n', '```\n'];
-        resolve(chunks);
-      }
+      else resolve(result);
     });
   });
 }
@@ -59,17 +56,16 @@ async function executeQueryTable(query: string, customConnection?: any): Promise
   });
 }
 
-// Dummy helper to be extended later on
+// Dummy helper to filter out non-queries
 function containsSQLQuery(message: string): boolean {
-  const sqlKeywords = ['SELECT', 'FROM', 'WHERE', 'LIMIT', 'ATTACH'];
-  const upperMessage = message.toUpperCase();
-  return sqlKeywords.some(keyword => upperMessage.includes(keyword));
+  const duckdbPattern = /\b(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|COPY|ATTACH|FROM|WHERE|GROUP BY|ORDER BY|LIMIT|READ_CSV|READ_PARQUET|READ_JSON_AUTO|UNNEST|PRAGMA|EXPLAIN|DESCRIBE|SHOW|SET|WITH|CASE|JOIN|TABLE)\b/i;
+  return duckdbPattern.test(message.toUpperCase());
 }
 
 const app = new Hono();
 
 app.get("/", (c) => {
-  return c.text("Quack! Welcome to the Copilot DuckDB Extension! 👋");
+  return c.text("Quack! 👋");
 });
 
 app.post("/", async (c) => {
@@ -168,35 +164,50 @@ app.post("/", async (c) => {
       }
       
       // Check if the message contains a SQL query
-      if (containsSQLQuery(newquery)) {
-        // Custom DB Instance for the authorized user. Not persistent long-term unless a volume is mapped.
-        console.log('Found valid query:',newquery);
-        const userdb = new duckdb.Database(`/tmp/${user.data.login}`);
-        const userconnection = userdb.connect();
+      if (containsSQLQuery(userPrompt)) {
+        console.log(user.data.login, userPrompt);
         try {
-          if (['(FORMAT JSON)'].some(char => userPrompt.toLowerCase().endsWith(char))) {
-            const resultChunks = await executeQuery(newquery.replace('(FORMAT JSON)',''), userconnection);
-          } else {
-            const resultChunks = await executeQueryTable(newquery, userconnection);
-          }
+          const resultChunks = await executeQueryTable(userPrompt);
+          console.log('Query Output:',resultChunks.join());
           // stream.write(createTextEvent(`Hi ${user.data.login}! Here are your query results:\n`));
           for (const chunk of resultChunks) {
             stream.write(createTextEvent(chunk));
           }
         } catch (error) {
-          stream.write(createTextEvent(`Oops! There was an error executing your query:\n`));
-          stream.write(createTextEvent(error instanceof Error ? error.message : 'Unknown error'));
+          // not a query, lets work around it
+          console.log(`Not a query! guessing via prompt.`);
+          const { message } = await prompt(`You are a DuckDB SQL Expert. Return a DuckDB SQL query for this prompt. do not add any comments - only pure DuckDB SQL allowed: ${userPrompt}`, {
+            token: tokenForUser,
+          });
+          const stripSQL = message.content.split('\n').filter(line => !line.trim().startsWith('```') && line.trim() !== '').join() || message.content;
+          console.log('LLM Output:', stripSQL);
+          if (containsSQLQuery(stripSQL)) {
+            try {
+              const resultChunks = await executeQueryTable(stripSQL);
+              console.log('Query Output:', resultChunks.join());
+              for (const chunk of resultChunks) {
+                stream.write(createTextEvent(chunk));
+              }
+            } catch (error) {
+               stream.write(createTextEvent(`Oops! ${error}`));
+            }
+          }
+          
         }
       } else {
         // Handle non-SQL messages using the normal prompt flow
+        console.log(`not a query. guessing via prompt.`);
         const { message } = await prompt(userPrompt, {
           token: tokenForUser,
         });
-        stream.write(createTextEvent(`Hi ${user.data.login}! `));
+        console.log('LLM Output:', message.content);
+        // If everything fails, return whatever the response was
+        // stream.write(createTextEvent(`This doesn't look like DuckDB SQL.\n`));
         stream.write(createTextEvent(message.content));
       }
-
+      
       stream.write(createDoneEvent());
+      
     } catch (error) {
       stream.write(
         createErrorsEvent([
