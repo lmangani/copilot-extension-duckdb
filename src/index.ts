@@ -147,7 +147,7 @@ app.post("/", async (c) => {
         }
       );
 
-      const newquery = await readStream(copilotLLMResponse.body);
+      const newquery = await readStream(copilotLLMResponse);
       console.log("LLM:", newquery);
 
       // Check if the message contains a SQL query
