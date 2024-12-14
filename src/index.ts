@@ -146,23 +146,22 @@ app.post("/", async (c) => {
             stream.write(createTextEvent(chunk));
           }
         } catch (error) {
-          stream.write(createTextEvent(`Oops! There was an error executing your query:\n`));
+          stream.write(createTextEvent('Oops! There was an error executing your query:\n'));
           stream.write(createTextEvent(error instanceof Error ? error.message : 'Unknown error'));
         }
       } else {
         // Handle non-SQL messages using the normal prompt flow
         console.log(`not a query. guessing via prompt.`);
-        const guessPrompt = `Generate a DuckDB SQL query for this prompt, making sure to exclusively return DuckDB SQL query with no comments: ${userPrompt}`
-        const { message } = await prompt(guessPrompt, {
+        const { message } = await prompt(userPrompt, {
           token: tokenForUser,
         });
         console.log('LLM Output:', message.content);
         // If everything fails, return whatever the response was
-        stream.write(createTextEvent(`I couldn't execute this but here's a potential solution: `));
+        stream.write(createTextEvent(`I couldn't execute SQL but here's a potential solution: `));
         stream.write(createTextEvent(message.content));
       }
-
       stream.write(createDoneEvent());
+      
     } catch (error) {
       stream.write(
         createErrorsEvent([
