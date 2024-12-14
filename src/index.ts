@@ -56,10 +56,7 @@ async function executeQueryTable(query: string): Promise<string[]> {
       if (err) {
         reject(err);
       } else {
-        // Print the SQL query within ```sql tags
         const chunks = [];
-        // const chunks = ['```sql\n', query, ' \n', '```\n', '\n'];
-        // Format the result into a markdown table
         if (result.length > 0) {
           const headers = Object.keys(result[0]);
           chunks.push('| ' + headers.join(' | ') + ' |\n');
@@ -146,8 +143,26 @@ app.post("/", async (c) => {
             stream.write(createTextEvent(chunk));
           }
         } catch (error) {
+          // not a query, lets work around it
+          console.log(`Not a query! guessing via prompt.`);
           stream.write(createTextEvent('Oops! There was an error executing your query:\n'));
-          stream.write(createTextEvent(error instanceof Error ? error.message : 'Unknown error'));
+          const { message } = await prompt(`return a DuckDB SQL query for this prompt. do not add any comments - only pure DuckDB SQL allowed: ${userPrompt}`, {
+            token: tokenForUser,
+          });
+          console.log('LLM Output:', message.content);
+          if (containsSQLQuery(message.content)) {
+            try {
+              const resultChunks = await executeQueryTable(userPrompt);
+              console.log('Query Output:',resultChunks.join());
+              // stream.write(createTextEvent(`Hi ${user.data.login}! Here are your query results:\n`));
+              for (const chunk of resultChunks) {
+                stream.write(createTextEvent(chunk));
+              }
+            } catch (error) {
+               stream.write(createTextEvent(`Oops! ${error}`));
+            }
+          }
+          
         }
       } else {
         // Handle non-SQL messages using the normal prompt flow
@@ -157,9 +172,10 @@ app.post("/", async (c) => {
         });
         console.log('LLM Output:', message.content);
         // If everything fails, return whatever the response was
-        stream.write(createTextEvent(`I couldn't execute SQL but here's a potential solution: `));
+        stream.write(createTextEvent(`This doesn't look like DuckDB SQL.\n`));
         stream.write(createTextEvent(message.content));
       }
+      
       stream.write(createDoneEvent());
       
     } catch (error) {
