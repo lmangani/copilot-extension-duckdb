@@ -151,20 +151,13 @@ app.post("/", async (c) => {
         }
       } else {
         // Handle non-SQL messages using the normal prompt flow
-        const guessPrompt = `Generate a working DuckDB SQL query for this prompt, making sure to exclusively return a DuckDB SQL query with no comments: ${userPrompt}`
+        const guessPrompt = `Generate a working DuckDB SQL query for this prompt, making sure to exclusively return DuckDB SQL query with no comments: ${userPrompt}`
         const { message } = await prompt(guessPrompt, {
           token: tokenForUser,
         });
-        if (containsSQLQuery(message.content)) {
-          const resultChunks = await executeQueryTable(message.content);
-          for (const chunk of resultChunks) {
-            stream.write(createTextEvent(chunk));
-          }
-        } else {
-          // If everything fails, return whatever the response was
-          stream.write(createTextEvent(`Hi ${user.data.login}! `));
-          stream.write(createTextEvent(message.content));
-        }
+        // If everything fails, return whatever the response was
+        stream.write(createTextEvent(`I couldn't execute this but here's a potential solution: `));
+        stream.write(createTextEvent(message.content));
       }
 
       stream.write(createDoneEvent());
