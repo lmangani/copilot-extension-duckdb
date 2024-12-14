@@ -137,7 +137,7 @@ app.post("/", async (c) => {
 
       // Check if the message contains a SQL query
       if (containsSQLQuery(userPrompt)) {
-        console.log(user, userPrompt);
+        console.log(user.data.login, userPrompt);
         try {
           const resultChunks = await executeQueryTable(userPrompt);
           console.log('Query Output:',resultChunks.join());
@@ -151,10 +151,12 @@ app.post("/", async (c) => {
         }
       } else {
         // Handle non-SQL messages using the normal prompt flow
-        const guessPrompt = `Generate a working DuckDB SQL query for this prompt, making sure to exclusively return DuckDB SQL query with no comments: ${userPrompt}`
+        console.log(`not a query. guessing via prompt.`);
+        const guessPrompt = `Generate a DuckDB SQL query for this prompt, making sure to exclusively return DuckDB SQL query with no comments: ${userPrompt}`
         const { message } = await prompt(guessPrompt, {
           token: tokenForUser,
         });
+        console.log('LLM Output:', message.content);
         // If everything fails, return whatever the response was
         stream.write(createTextEvent(`I couldn't execute this but here's a potential solution: `));
         stream.write(createTextEvent(message.content));
