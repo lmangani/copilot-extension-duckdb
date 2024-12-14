@@ -12,13 +12,12 @@ import {
   prompt,
   verifyAndParseRequest,
 } from "@copilot-extensions/preview-sdk";
-import { Readable } from "node:stream";
 
 // Initialize DuckDB
 const db = new duckdb.Database(':memory:'); // In-memory database
 const connection = db.connect();
 
-// Helper function to execute SQL queries, return JSON
+// Helper function to execute SQL queries
 async function executeQuery(query: string): Promise<any> {
   return new Promise((resolve, reject) => {
     connection.all(query, (err, result) => {
@@ -28,15 +27,33 @@ async function executeQuery(query: string): Promise<any> {
   });
 }
 
-// Helper function to execute SQL queries, return markdown table
-async function executeQueryTable(query: string, customConnection?: any): Promise<string[]> {
+// Results with printTable(json);
+async function executeQueryPretty(query: string): Promise<any> {
   return new Promise((resolve, reject) => {
-    const conn = customConnection || connection;
-    conn.all(query, (err, result) => {
+    connection.all(query, (err, result) => {
       if (err) {
         reject(err);
       } else {
-        // Build response chunks
+        // Print the SQL query within ```sql tags
+        const chunks = ['```sql\n', query, ' \n', '```\n', '\n'];
+        const p = new Table(result);
+        const tableStr = p.render();
+        chunks.push('```\n');
+        chunks.push(tableStr.toString());
+        chunks.push('```\n');
+        resolve(chunks);
+      }
+    });
+  });
+}
+
+// Helper function to execute SQL queries
+async function executeQueryTable(query: string): Promise<string[]> {
+  return new Promise((resolve, reject) => {
+    connection.all(query, (err, result) => {
+      if (err) {
+        reject(err);
+      } else {
         const chunks = [];
         if (result.length > 0) {
           const headers = Object.keys(result[0]);
@@ -73,7 +90,6 @@ app.post("/", async (c) => {
   const body = await c.req.text();
   const signature = c.req.header("github-public-key-signature") ?? "";
   const keyID = c.req.header("github-public-key-identifier") ?? "";
-
   const { isValidRequest, payload } = await verifyAndParseRequest(
     body,
     signature,
@@ -112,64 +128,13 @@ app.post("/", async (c) => {
       const octokit = new Octokit({ auth: tokenForUser });
       const user = await octokit.request("GET /user");
       const userPrompt = getUserMessage(payload);
-      console.log("User:", user.data.login);
-      console.log("Request:", userPrompt);
-      
-      // Patch LLM
-      const messages = payload.messages;
-      messages.unshift({
-        role: "system",
-        content: `You exclusively return complete, valid DuckDB SQL queries without any commentary. Always end queries with semicolon. You're specialized in DuckDB's unique SQL features and syntax.
 
-        Examples:
-        User: show the duckdb version
-        Assistant: SELECT version();
-        
-        User: Show me records from data
-        Assistant: SELECT * FROM data;
-        
-        User: Select all records from 'https://duckdb.org/data/schedule.csv'
-        Assistant: SELECT * FROM 'https://duckdb.org/data/schedule.csv'
-        
-        User: Show all airports in Italy from 'https://s3.us-east-1.amazonaws.com/altinity-clickhouse-data/airline/data/airports/Airports.csv'
-        Assistant: SELECT * FROM read_csv_auto("https://s3.us-east-1.amazonaws.com/altinity-clickhouse-data/airline/data/airports/Airports.csv") WHERE Country == 'Italy' ORDER BY City ASC
-        
-        User: Show file info
-        Assistant: SELECT * FROM duckdb_extensions();`
-      });
-    
-      // Use Copilot's LLM to generate a response to the user's messages, with
-      // our extra system messages attached.
-      const copilotLLMResponse = await fetch(
-        "https://api.githubcopilot.com/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${tokenForUser}`,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            messages,
-            stream: true,
-          }),
-        }
-      );
-
-      try {
-          const newquery = await processLLMStream(copilotLLMResponse.body);
-          console.log("LLM Response:", newquery);
-      } catch (error) {
-          console.error('Error converting stream to string:', error);
-          return c.text('Error processing LLM stream:', error);
-      }
-      
       // Check if the message contains a SQL query
       if (containsSQLQuery(userPrompt)) {
         console.log(user.data.login, userPrompt);
         try {
           const resultChunks = await executeQueryTable(userPrompt);
           console.log('Query Output:',resultChunks.join());
-          // stream.write(createTextEvent(`Hi ${user.data.login}! Here are your query results:\n`));
           for (const chunk of resultChunks) {
             stream.write(createTextEvent(chunk));
           }
@@ -223,53 +188,8 @@ app.post("/", async (c) => {
   });
 });
 
-/**
- * Processes a stream of Server-Sent Events from the Copilot LLM API
- * and accumulates the content into a single string
- */
-async function processLLMStream(stream: ReadableStream): Promise<string> {
-    const reader = stream.getReader();
-    const decoder = new TextDecoder();
-    let accumulator = '';
-
-    try {
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            // Decode the chunk
-            const chunk = decoder.decode(value);
-            
-            // Split into individual SSE events
-            const events = chunk
-                .split('\n')
-                .filter(line => line.startsWith('data: '))
-                .map(line => line.slice(5).trim());
-
-            // Process each event
-            for (const event of events) {
-                if (event === '[DONE]') continue;
-                
-                try {
-                    const parsed = JSON.parse(event);
-                    if (parsed.choices?.[0]?.delta?.content) {
-                        accumulator += parsed.choices[0].delta.content;
-                    }
-                } catch (e) {
-                    // Skip invalid JSON
-                    continue;
-                }
-            }
-        }
-    } finally {
-        reader.releaseLock();
-    }
-
-    return accumulator.trim();
-}
-
 const port = 3000;
-console.log(`DuckDB-Copilot Server is running on port ${port}`);
+console.log(`Server is running on port ${port}`);
 
 serve({
   fetch: app.fetch,
