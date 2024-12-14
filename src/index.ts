@@ -24,7 +24,10 @@ async function executeQuery(query: string): Promise<any> {
   return new Promise((resolve, reject) => {
     connection.all(query, (err, result) => {
       if (err) reject(err);
-      else resolve(result);
+      else {
+        const chunks = ['```json\n', result, '\n', '```\n'];
+        resolve(chunks);
+      }
     });
   });
 }
@@ -139,7 +142,11 @@ app.post("/", async (c) => {
       // Check if the message contains a SQL query
       if (containsSQLQuery(userPrompt)) {
         try {
-          const resultChunks = await executeQueryTable(userPrompt);
+          if (['as json','format json'].some(char => userPrompt.toLowerCase().endsWith(char))) {
+            const resultChunks = await executeQuery(userPrompt);
+          } else {
+            const resultChunks = await executeQueryTable(userPrompt);
+          }
           // stream.write(createTextEvent(`Hi ${user.data.login}! Here are your query results:\n`));
           for (const chunk of resultChunks) {
             stream.write(createTextEvent(chunk));
