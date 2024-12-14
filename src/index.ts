@@ -123,7 +123,23 @@ app.post("/", async (c) => {
       const messages = payload.messages;
       messages.unshift({
         role: "system",
-        content: "You are a helpful assistant specialized in DuckDB SQL. You convert user prompts to valid DuckDB SQL queries. You respond with SQL only without any commentary.",
+        content: `You exclusively return complete, valid DuckDB SQL queries without any commentary. Always end queries with semicolon. You're specialized in DuckDB's unique SQL features and syntax.
+
+        Examples:
+        User: show the duckdb version
+        Assistant: SELECT version();
+        
+        User: Show me records from data
+        Assistant: SELECT * FROM data;
+        
+        User: Select all records from 'https://duckdb.org/data/schedule.csv'
+        Assistant: SELECT * FROM 'https://duckdb.org/data/schedule.csv'
+        
+        User: Show all airports in Italy from 'https://s3.us-east-1.amazonaws.com/altinity-clickhouse-data/airline/data/airports/Airports.csv'
+        Assistant: SELECT * FROM read_csv_auto("https://s3.us-east-1.amazonaws.com/altinity-clickhouse-data/airline/data/airports/Airports.csv") WHERE Country == 'Italy' ORDER BY City ASC
+        
+        User: Show file info
+        Assistant: SELECT * FROM duckdb_extensions();`
       });
     
       // Use Copilot's LLM to generate a response to the user's messages, with
@@ -145,7 +161,7 @@ app.post("/", async (c) => {
 
       try {
           const newquery = await processLLMStream(copilotLLMResponse.body);
-          console.log("LLM:", newquery);
+          console.log("LLM Response:", newquery);
       } catch (error) {
           console.error('Error converting stream to string:', error);
           return c.text('Error processing LLM stream:', error);
@@ -154,6 +170,7 @@ app.post("/", async (c) => {
       // Check if the message contains a SQL query
       if (containsSQLQuery(newquery)) {
         // Custom DB Instance for the authorized user. Not persistent long-term unless a volume is mapped.
+        console.log('Found valid query:',newquery);
         const userdb = new duckdb.Database(`/tmp/${user.data.login}`);
         const userconnection = userdb.connect();
         try {
