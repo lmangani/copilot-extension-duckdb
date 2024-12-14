@@ -63,25 +63,17 @@ async function executeQueryTable(query: string, customConnection?: any): Promise
         const chunks = [];
         if (result.length > 0) {
           const headers = Object.keys(result[0]);
-          // Get column types
-          conn.describe(query, (err, schema) => {
-            if (err) {
-              reject(err);
-            } else {
-              chunks.push('| ' + headers.join(' | ') + ' |\n');
-              chunks.push('| ' + headers.map(() => '---').join(' | ') + ' |\n');
-              result.forEach(row => {
-                const values = headers.map(header => row[header]);
-                chunks.push('| ' + values.join(' | ') + ' |\n');
-              });
-              chunks.push('\n');
-              resolve(chunks);
-            }
+          chunks.push('| ' + headers.join(' | ') + ' |\n');
+          chunks.push('| ' + headers.map(() => '---').join(' | ') + ' |\n');
+          result.forEach(row => {
+            const values = headers.map(header => row[header]);
+            chunks.push('| ' + values.join(' | ') + ' |\n');
           });
+          chunks.push('\n');
         } else {
           chunks.push('No results found.\n');
-          resolve(chunks);
         }
+        resolve(chunks);
       }
     });
   });
