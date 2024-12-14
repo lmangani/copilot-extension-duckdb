@@ -13,13 +13,11 @@ import {
   verifyAndParseRequest,
 } from "@copilot-extensions/preview-sdk";
 
-import { printTable, Table } from "console-table-printer";
-
 // Initialize DuckDB
 const db = new duckdb.Database(':memory:'); // In-memory database
 const connection = db.connect();
 
-// Helper function to execute SQL queries
+// Helper function to execute SQL queries, return JSON
 async function executeQuery(query: string): Promise<any> {
   return new Promise((resolve, reject) => {
     connection.all(query, (err, result) => {
@@ -32,37 +30,16 @@ async function executeQuery(query: string): Promise<any> {
   });
 }
 
-// Results with printTable(json);
-async function executeQueryPretty(query: string): Promise<any> {
+// Helper function to execute SQL queries, return markdown table
+async function executeQueryTable(query: string, customConnection?: any): Promise<string[]> {
   return new Promise((resolve, reject) => {
-    connection.all(query, (err, result) => {
+    const conn = customConnection || connection;
+    conn.all(query, (err, result) => {
       if (err) {
         reject(err);
       } else {
-        // Print the SQL query within ```sql tags
-        const chunks = ['```sql\n', query, ' \n', '```\n', '\n'];
-        const p = new Table(result);
-        const tableStr = p.render();
-        chunks.push('```\n');
-        chunks.push(tableStr.toString());
-        chunks.push('```\n');
-        resolve(chunks);
-      }
-    });
-  });
-}
-
-// Helper function to execute SQL queries
-async function executeQueryTable(query: string): Promise<string[]> {
-  return new Promise((resolve, reject) => {
-    connection.all(query, (err, result) => {
-      if (err) {
-        reject(err);
-      } else {
-        // Print the SQL query within ```sql tags
+        // Build response chunks
         const chunks = [];
-        // const chunks = ['```sql\n', query, ' \n', '```\n', '\n'];
-        // Format the result into a markdown table
         if (result.length > 0) {
           const headers = Object.keys(result[0]);
           chunks.push('| ' + headers.join(' | ') + ' |\n');
@@ -83,7 +60,7 @@ async function executeQueryTable(query: string): Promise<string[]> {
 
 // Dummy helper to be extended later on
 function containsSQLQuery(message: string): boolean {
-  const sqlKeywords = ['SELECT', 'FROM', 'WHERE', 'LIMIT'];
+  const sqlKeywords = ['SELECT', 'FROM', 'WHERE', 'LIMIT', 'ATTACH'];
   const upperMessage = message.toUpperCase();
   return sqlKeywords.some(keyword => upperMessage.includes(keyword));
 }
@@ -91,7 +68,7 @@ function containsSQLQuery(message: string): boolean {
 const app = new Hono();
 
 app.get("/", (c) => {
-  return c.text("Welcome to the Copilot DuckDB Extension! Query Me! 👋");
+  return c.text("Quack! Welcome to the Copilot DuckDB Extension! 👋");
 });
 
 app.post("/", async (c) => {
@@ -138,14 +115,49 @@ app.post("/", async (c) => {
       const octokit = new Octokit({ auth: tokenForUser });
       const user = await octokit.request("GET /user");
       const userPrompt = getUserMessage(payload);
+      console.log("User:", user.data.login);
+      console.log("Request:", userPrompt);
+      
+      // Patch LLM
+      const messages = payload.messages;
+      messages.unshift({
+        role: "system",
+        content: "You are a helpful assistant that converts user prompts into valid DuckDB SQL queries. You only know and use DuckDB SQL and no other database exists.",
+      });
+      messages.unshift({
+        role: "system",
+        content: `You exclusively respond with valid DuckDB SQL commands, ready to execute without any comments or context attached.`,
+      });
+    
+      // Use Copilot's LLM to generate a response to the user's messages, with
+      // our extra system messages attached.
+      const copilotLLMResponse = await fetch(
+        "https://api.githubcopilot.com/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${tokenForUser}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            messages,
+            stream: true,
+          }),
+        }
+      );
+
+      const newquery = copilotLLMResponse.body;
 
       // Check if the message contains a SQL query
-      if (containsSQLQuery(userPrompt)) {
+      if (containsSQLQuery(newquery)) {
+        // Custom DB Instance for the authorized user. Not persistent long-term unless a volume is mapped.
+        const userdb = new duckdb.Database(`/tmp/${user.data.login}`);
+        const userconnection = userdb.connect();
         try {
-          if (['as json','format json'].some(char => userPrompt.toLowerCase().endsWith(char))) {
-            const resultChunks = await executeQuery(userPrompt);
+          if (['(FORMAT JSON)'].some(char => userPrompt.toLowerCase().endsWith(char))) {
+            const resultChunks = await executeQuery(newquery.replace('(FORMAT JSON)',''), userconnection);
           } else {
-            const resultChunks = await executeQueryTable(userPrompt);
+            const resultChunks = await executeQueryTable(newquery, userconnection);
           }
           // stream.write(createTextEvent(`Hi ${user.data.login}! Here are your query results:\n`));
           for (const chunk of resultChunks) {
@@ -181,7 +193,7 @@ app.post("/", async (c) => {
 });
 
 const port = 3000;
-console.log(`Server is running on port ${port}`);
+console.log(`DuckDB-Copilot Server is running on port ${port}`);
 
 serve({
   fetch: app.fetch,
