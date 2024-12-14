@@ -12,6 +12,7 @@ import {
   prompt,
   verifyAndParseRequest,
 } from "@copilot-extensions/preview-sdk";
+import { Readable } from "node:stream";
 
 // Initialize DuckDB
 const db = new duckdb.Database(':memory:'); // In-memory database
@@ -141,7 +142,7 @@ app.post("/", async (c) => {
           },
           body: JSON.stringify({
             messages,
-            stream: true,
+            stream: false,
           }),
         }
       );
