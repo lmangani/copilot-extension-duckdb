@@ -122,7 +122,7 @@ app.post("/", async (c) => {
       const messages = payload.messages;
       messages.unshift({
         role: "system",
-        content: "You are a helpful assistant that converts user prompts into valid DuckDB SQL queries. You only know and use DuckDB SQL and no other database exists.",
+        content: "You are a helpful assistant specialized in DuckDB SQL. You convert user prompts to valid DuckDB SQL queries. You only know and use DuckDB SQL and no other database exists.",
       });
       messages.unshift({
         role: "system",
@@ -147,6 +147,7 @@ app.post("/", async (c) => {
       );
 
       const newquery = copilotLLMResponse.body;
+      console.log("LLM:", newquery);
 
       // Check if the message contains a SQL query
       if (containsSQLQuery(newquery)) {
