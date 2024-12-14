@@ -52,30 +52,36 @@ async function executeQueryPretty(query: string): Promise<any> {
   });
 }
 
-// Helper function to execute SQL queries
-async function executeQueryTable(query: string): Promise<string[]> {
+// Helper function to execute SQL queries, return markdown table with column types
+async function executeQueryTable(query: string, customConnection?: any): Promise<string[]> {
   return new Promise((resolve, reject) => {
-    connection.all(query, (err, result) => {
+    const conn = customConnection || connection;
+    conn.all(query, (err, result) => {
       if (err) {
         reject(err);
       } else {
-        // Print the SQL query within ```sql tags
         const chunks = [];
-        // const chunks = ['```sql\n', query, ' \n', '```\n', '\n'];
-        // Format the result into a markdown table
         if (result.length > 0) {
           const headers = Object.keys(result[0]);
-          chunks.push('| ' + headers.join(' | ') + ' |\n');
-          chunks.push('| ' + headers.map(() => '---').join(' | ') + ' |\n');
-          result.forEach(row => {
-            const values = headers.map(header => row[header]);
-            chunks.push('| ' + values.join(' | ') + ' |\n');
+          // Get column types
+          conn.describe(query, (err, schema) => {
+            if (err) {
+              reject(err);
+            } else {
+              chunks.push('| ' + headers.join(' | ') + ' |\n');
+              chunks.push('| ' + headers.map(() => '---').join(' | ') + ' |\n');
+              result.forEach(row => {
+                const values = headers.map(header => row[header]);
+                chunks.push('| ' + values.join(' | ') + ' |\n');
+              });
+              chunks.push('\n');
+              resolve(chunks);
+            }
           });
-          chunks.push('\n');
         } else {
           chunks.push('No results found.\n');
+          resolve(chunks);
         }
-        resolve(chunks);
       }
     });
   });
