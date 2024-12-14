@@ -147,7 +147,7 @@ app.post("/", async (c) => {
         }
       );
 
-      const newquery = copilotLLMResponse.body;
+      const newquery = await readStream(copilotLLMResponse.body);
       console.log("LLM:", newquery);
 
       // Check if the message contains a SQL query
@@ -193,6 +193,21 @@ app.post("/", async (c) => {
     }
   });
 });
+
+async function readStream(stream: Readable): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    stream.on('data', chunk => {
+      data += chunk;
+    });
+    stream.on('end', () => {
+      resolve(data);
+    });
+    stream.on('error', err => {
+      reject(err);
+    });
+  });
+}
 
 const port = 3000;
 console.log(`DuckDB-Copilot Server is running on port ${port}`);
