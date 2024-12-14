@@ -145,16 +145,15 @@ app.post("/", async (c) => {
         } catch (error) {
           // not a query, lets work around it
           console.log(`Not a query! guessing via prompt.`);
-          stream.write(createTextEvent('Oops! There was an error executing your query:\n'));
-          const { message } = await prompt(`return a DuckDB SQL query for this prompt. do not add any comments - only pure DuckDB SQL allowed: ${userPrompt}`, {
+          const { message } = await prompt(`You are a DuckDB SQL Expert. Return a DuckDB SQL query for this prompt. do not add any comments - only pure DuckDB SQL allowed: ${userPrompt}`, {
             token: tokenForUser,
           });
-          console.log('LLM Output:', message.content);
-          if (containsSQLQuery(message.content)) {
+          const stripSQL = message.content.split('\n').filter(line => !line.trim().startsWith('```') && line.trim() !== '').join() || message.content;
+          console.log('LLM Output:', stripSQL);
+          if (containsSQLQuery(stripSQL)) {
             try {
-              const resultChunks = await executeQueryTable(userPrompt);
-              console.log('Query Output:',resultChunks.join());
-              // stream.write(createTextEvent(`Hi ${user.data.login}! Here are your query results:\n`));
+              const resultChunks = await executeQueryTable(message.content);
+              console.log('Query Output:', resultChunks.join());
               for (const chunk of resultChunks) {
                 stream.write(createTextEvent(chunk));
               }
