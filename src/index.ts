@@ -147,9 +147,14 @@ app.post("/", async (c) => {
         }
       );
 
-      const newquery = await readStream(copilotLLMResponse.body);
-      console.log("LLM:", newquery);
-
+      try {
+          const newquery = await streamToString(copilotLLMResponse.body);
+          console.log("LLM:", newquery);
+      } catch (error) {
+          console.error('Error converting stream to string:', error);
+          return c.text('Error processing LLM stream.');
+      }
+      
       // Check if the message contains a SQL query
       if (containsSQLQuery(newquery)) {
         // Custom DB Instance for the authorized user. Not persistent long-term unless a volume is mapped.
@@ -194,19 +199,48 @@ app.post("/", async (c) => {
   });
 });
 
-async function readStream(stream: Readable): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let data = '';
-    stream.on('data', chunk => {
-      data += chunk;
-    });
-    stream.on('end', () => {
-      resolve(data);
-    });
-    stream.on('error', err => {
-      reject(err);
-    });
-  });
+/**
+ * Utility function to convert a ReadableStream to a string
+ * Handles both Web Streams API and Node.js streams
+ */
+async function streamToString(stream: ReadableStream | NodeJS.ReadableStream): Promise<string> {
+    // Handle Web Streams API ReadableStream
+    if (stream instanceof ReadableStream) {
+        const reader = stream.getReader();
+        const chunks: Uint8Array[] = [];
+
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+            }
+        } finally {
+            reader.releaseLock();
+        }
+
+        // Concatenate chunks and decode
+        const concatenated = new Uint8Array(chunks.reduce((acc, chunk) => acc + chunk.length, 0));
+        let offset = 0;
+        for (const chunk of chunks) {
+            concatenated.set(chunk, offset);
+            offset += chunk.length;
+        }
+        return new TextDecoder().decode(concatenated);
+    }
+    
+    // Handle Node.js Readable streams
+    if (typeof stream.on === 'function') {
+        return new Promise((resolve, reject) => {
+            const chunks: Buffer[] = [];
+            
+            stream.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+            stream.on('error', (err) => reject(err));
+            stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+        });
+    }
+    
+    throw new Error('Unsupported stream type');
 }
 
 const port = 3000;
