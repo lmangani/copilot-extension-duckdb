@@ -123,11 +123,7 @@ app.post("/", async (c) => {
       const messages = payload.messages;
       messages.unshift({
         role: "system",
-        content: "You are a helpful assistant specialized in DuckDB SQL. You convert user prompts to valid DuckDB SQL queries. You only know and use DuckDB SQL and no other database exists.",
-      });
-      messages.unshift({
-        role: "system",
-        content: `You exclusively respond with valid DuckDB SQL commands, ready to execute without any comments or context attached.`,
+        content: "You are a helpful assistant specialized in DuckDB SQL. You convert user prompts to valid DuckDB SQL queries. You respond with SQL only without any commentary.",
       });
     
       // Use Copilot's LLM to generate a response to the user's messages, with
@@ -233,13 +229,11 @@ async function streamToString(stream: ReadableStream | NodeJS.ReadableStream): P
     if (typeof stream.on === 'function') {
         return new Promise((resolve, reject) => {
             const chunks: Buffer[] = [];
-            
             stream.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
             stream.on('error', (err) => reject(err));
             stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
         });
     }
-    
     throw new Error('Unsupported stream type');
 }
 
