@@ -33,7 +33,7 @@ async function executeQuery(query: string): Promise<any> {
 }
 
 // Results with printTable(json);
-async function executeQueryPretty(query: string): Promise<any> {
+async function executeQueryPretty(query: string, customConnection?: any): Promise<any> {
   return new Promise((resolve, reject) => {
     connection.all(query, (err, result) => {
       if (err) {
@@ -136,14 +136,15 @@ app.post("/", async (c) => {
       const octokit = new Octokit({ auth: tokenForUser });
       const user = await octokit.request("GET /user");
       const userPrompt = getUserMessage(payload);
+      console.log("Hello User", user.data.login;
 
       // Check if the message contains a SQL query
       if (containsSQLQuery(userPrompt)) {
         try {
-          if (['as json','format json'].some(char => userPrompt.toLowerCase().endsWith(char))) {
-            const resultChunks = await executeQuery(userPrompt);
-          } else {
-            const resultChunks = await executeQueryTable(userPrompt);
+            console.log('Found valid query:',userPrompt);
+            const userdb = new duckdb.Database(`/tmp/${user.data.login}`);
+            const userconnection = userdb.connect();
+            const resultChunks = await executeQueryTable(userPrompt, userconnection);
           }
           // stream.write(createTextEvent(`Hi ${user.data.login}! Here are your query results:\n`));
           for (const chunk of resultChunks) {
