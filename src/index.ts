@@ -65,7 +65,7 @@ async function executeQueryTable(query: string): Promise<string[]> {
           });
           chunks.push('\n');
         } else {
-          chunks.push('No results found.\n');
+          chunks.push('Ok. No results returned.\n');
         }
         resolve(chunks);
       }
