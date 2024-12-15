@@ -43,10 +43,10 @@ VALUES ('San Francisco', 'US'), ('Amsterdam','NL'), ('Bologna','IT');
 ```
 
 ### LLM SQL
-```sql
+```
 @duckdb-copilot show all entries from cities
 ```
 
-```sql
+```
 @duckdb-copilot show the duckdb version
 ```
