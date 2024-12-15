@@ -47,3 +47,7 @@ VALUES ('San Francisco', 'US'), ('Amsterdam','NL'), ('Bologna','IT');
 ```
 @duckdb-copilot show the duckdb version
 ```
+
+### Screenshot
+
+![image](https://github.com/user-attachments/assets/16575c08-4325-4c17-b1a5-cef4de44abd0)
