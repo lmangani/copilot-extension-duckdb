@@ -21,32 +21,32 @@ open http://localhost:3000
 
 ## Examples
 ### Basic Queries
-```
+```sql
 @duckdb-copilot SELECT 1, 2, 3
 ```
 
 ### Table Persistence
-```
+```sql
 @duckdb-copilot CREATE TABLE cities (
     name VARCHAR,
     country VARCHAR
 );
 ```
 
-```
+```sql
 @duckdb-copilot INSERT INTO cities
 VALUES ('San Francisco', 'US'), ('Amsterdam','NL'), ('Bologna','IT');
 ```
 
-```
+```sql
 @duckdb-copilot SELECT * FROM cities
 ```
 
 ### LLM SQL
-```
+```sql
 @duckdb-copilot show all entries from cities
 ```
 
-```
+```sql
 @duckdb-copilot show the duckdb version
 ```
