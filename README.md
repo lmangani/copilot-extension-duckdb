@@ -17,7 +17,7 @@ npm run dev
 open http://localhost:3000
 ```
 
-> Follow the `/docs` instructions to register your Copilot Extension
+> Follow the `/docs` instructions to [register](https://github.com/quackscience/copilot-extension-duckdb/blob/main/docs/DEVELOPMENT_SETUP.md) your Copilot Extension
 
 ## Examples
 ### Basic Queries
